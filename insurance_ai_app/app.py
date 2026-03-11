@@ -17,12 +17,17 @@ st.set_page_config(
 @st.cache_resource
 def load_models():
 
-    if not os.path.exists("models.pkl"):
-        st.error("models.pkl not found. Run train_models.py first.")
-        st.stop()
+    # If model exists → load it
+    if os.path.exists("models.pkl"):
+        with open("models.pkl", "rb") as f:
+            return pickle.load(f)
 
-    with open("models.pkl", "rb") as f:
-        payload = pickle.load(f)
+    # If model missing → train it
+    st.info("Training models for first run...")
+
+    from train_models import train_and_save
+
+    payload = train_and_save()
 
     return payload
 

@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import pickle
-import os
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
@@ -9,6 +8,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import os
+
+csv_path = os.path.join(os.path.dirname(__file__), "insurance.csv")
+df = pd.read_csv(csv_path)
 
 
 def train_and_save(csv_path="insurance.csv", output_path="models.pkl"):

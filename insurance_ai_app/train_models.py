@@ -12,13 +12,23 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 
-def train_and_save(output_path="models.pkl"):
+def train_and_save():
 
-    # correct dataset path (works locally + Streamlit cloud)
-    csv_path = os.path.join(os.path.dirname(__file__), "insurance.csv")
+    # Get folder where this script is located
+    base_dir = os.path.dirname(os.path.abspath(__file__))
 
+    # Dataset path
+    csv_path = os.path.join(base_dir, "insurance.csv")
+
+    # Model output path
+    model_path = os.path.join(base_dir, "models.pkl")
+
+    # -----------------------------
+    # Load dataset
+    # -----------------------------
     df = pd.read_csv(csv_path)
 
+    # Feature engineering
     df["age_bmi"] = df["age"] * df["bmi"]
 
     X = df.drop("charges", axis=1)
@@ -27,6 +37,9 @@ def train_and_save(output_path="models.pkl"):
     num_features = ["age", "bmi", "children", "age_bmi"]
     cat_features = ["sex", "smoker", "region"]
 
+    # -----------------------------
+    # Preprocessing
+    # -----------------------------
     numeric_pipeline = Pipeline([
         ("scaler", StandardScaler())
     ])
@@ -40,16 +53,26 @@ def train_and_save(output_path="models.pkl"):
         ("cat", categorical_pipeline, cat_features),
     ])
 
+    # -----------------------------
+    # Train Test Split
+    # -----------------------------
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
+    # -----------------------------
+    # Models
+    # -----------------------------
     model_defs = {
         "Gradient Boosting": GradientBoostingRegressor(
-            n_estimators=300, learning_rate=0.05, max_depth=5, random_state=42
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=5,
+            random_state=42
         ),
         "Random Forest": RandomForestRegressor(
-            n_estimators=200, random_state=42
+            n_estimators=200,
+            random_state=42
         ),
         "Linear Regression": LinearRegression(),
     }
@@ -57,6 +80,9 @@ def train_and_save(output_path="models.pkl"):
     trained_models = {}
     results = []
 
+    # -----------------------------
+    # Train models
+    # -----------------------------
     for name, model in model_defs.items():
 
         pipe = Pipeline([
@@ -78,14 +104,17 @@ def train_and_save(output_path="models.pkl"):
 
         results.append({
             "Model": name,
-            "R2": round(r2,4),
-            "RMSE": round(rmse,2),
-            "MAE": round(mae,2),
-            "CV_R2": round(cv,4)
+            "R2": round(r2, 4),
+            "RMSE": round(rmse, 2),
+            "MAE": round(mae, 2),
+            "CV_R2": round(cv, 4)
         })
 
-        print(f"{name}  R2={r2:.4f}  RMSE=${rmse:,.0f}")
+        print(f"{name} | R2={r2:.4f} | RMSE=${rmse:,.0f}")
 
+    # -----------------------------
+    # Best model
+    # -----------------------------
     best_name = max(results, key=lambda x: x["R2"])["Model"]
 
     payload = {
@@ -96,13 +125,18 @@ def train_and_save(output_path="models.pkl"):
         "cat_feat": cat_features
     }
 
-    with open(output_path, "wb") as f:
+    # -----------------------------
+    # Save models
+    # -----------------------------
+    with open(model_path, "wb") as f:
         pickle.dump(payload, f)
 
-    print(f"Saved model file → {output_path}")
+    print(f"\nModel saved → {model_path}")
+    print(f"Best model → {best_name}")
 
     return payload
 
 
+# Run training if script executed directly
 if __name__ == "__main__":
     train_and_save()

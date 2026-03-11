@@ -14,21 +14,24 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 def train_and_save():
 
-    # Get folder where this script is located
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Base directory (works locally + Streamlit cloud)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    # Dataset path
-    csv_path = os.path.join(base_dir, "insurance.csv")
-
-    # Model output path
-    model_path = os.path.join(base_dir, "models.pkl")
+    # File paths
+    csv_path = os.path.join(BASE_DIR, "insurance.csv")
+    model_path = os.path.join(BASE_DIR, "models.pkl")
 
     # -----------------------------
-    # Load dataset
+    # Load dataset safely
     # -----------------------------
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Dataset not found: {csv_path}")
+
     df = pd.read_csv(csv_path)
 
-    # Feature engineering
+    # -----------------------------
+    # Feature Engineering
+    # -----------------------------
     df["age_bmi"] = df["age"] * df["bmi"]
 
     X = df.drop("charges", axis=1)
@@ -38,7 +41,7 @@ def train_and_save():
     cat_features = ["sex", "smoker", "region"]
 
     # -----------------------------
-    # Preprocessing
+    # Preprocessing Pipelines
     # -----------------------------
     numeric_pipeline = Pipeline([
         ("scaler", StandardScaler())
@@ -54,7 +57,7 @@ def train_and_save():
     ])
 
     # -----------------------------
-    # Train Test Split
+    # Train/Test Split
     # -----------------------------
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
@@ -63,7 +66,7 @@ def train_and_save():
     # -----------------------------
     # Models
     # -----------------------------
-    model_defs = {
+    models = {
         "Gradient Boosting": GradientBoostingRegressor(
             n_estimators=300,
             learning_rate=0.05,
@@ -74,16 +77,16 @@ def train_and_save():
             n_estimators=200,
             random_state=42
         ),
-        "Linear Regression": LinearRegression(),
+        "Linear Regression": LinearRegression()
     }
 
     trained_models = {}
     results = []
 
     # -----------------------------
-    # Train models
+    # Training Loop
     # -----------------------------
-    for name, model in model_defs.items():
+    for name, model in models.items():
 
         pipe = Pipeline([
             ("preprocessing", preprocessor),
@@ -98,7 +101,7 @@ def train_and_save():
         mae = mean_absolute_error(y_test, preds)
         r2 = r2_score(y_test, preds)
 
-        cv = cross_val_score(pipe, X, y, cv=5, scoring="r2").mean()
+        cv_r2 = cross_val_score(pipe, X, y, cv=5, scoring="r2").mean()
 
         trained_models[name] = pipe
 
@@ -107,36 +110,36 @@ def train_and_save():
             "R2": round(r2, 4),
             "RMSE": round(rmse, 2),
             "MAE": round(mae, 2),
-            "CV_R2": round(cv, 4)
+            "CV_R2": round(cv_r2, 4)
         })
 
-        print(f"{name} | R2={r2:.4f} | RMSE=${rmse:,.0f}")
+        print(f"{name}  |  R2={r2:.4f}  RMSE=${rmse:,.0f}")
 
     # -----------------------------
-    # Best model
+    # Best Model
     # -----------------------------
-    best_name = max(results, key=lambda x: x["R2"])["Model"]
+    best_model = max(results, key=lambda x: x["R2"])["Model"]
 
     payload = {
         "models": trained_models,
         "results": results,
-        "best": best_name,
+        "best": best_model,
         "num_feat": num_features,
         "cat_feat": cat_features
     }
 
     # -----------------------------
-    # Save models
+    # Save model file
     # -----------------------------
     with open(model_path, "wb") as f:
         pickle.dump(payload, f)
 
-    print(f"\nModel saved → {model_path}")
-    print(f"Best model → {best_name}")
+    print("\nModel file saved:", model_path)
+    print("Best model:", best_model)
 
     return payload
 
 
-# Run training if script executed directly
+# Run training directly
 if __name__ == "__main__":
     train_and_save()
